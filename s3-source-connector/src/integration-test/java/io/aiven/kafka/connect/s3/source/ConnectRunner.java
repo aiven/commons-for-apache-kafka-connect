@@ -28,13 +28,9 @@ import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.connect.runtime.Connect;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.Herder;
-import org.apache.kafka.connect.runtime.Worker;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
-import org.apache.kafka.connect.runtime.rest.RestServer;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorInfo;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
-import org.apache.kafka.connect.runtime.standalone.StandaloneHerder;
-import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.apache.kafka.connect.util.FutureCallback;
 
 import org.slf4j.Logger;
@@ -82,12 +78,12 @@ final class ConnectRunner {
         final Plugins plugins = new Plugins(workerProps);
         final StandaloneConfig config = new StandaloneConfig(workerProps);
 
-        final Worker worker = new Worker(workerId, time, plugins, config, new MemoryOffsetBackingStore());
-        herder = new StandaloneHerder(worker, kafkaClusterId);
-
-        final RestServer rest = new RestServer(config);
-
-        connect = new Connect(herder, rest);
+        // final Worker worker = new Worker(workerId, time, plugins, config, new MemoryOffsetBackingStore());
+        // herder = new StandaloneHerder(worker, kafkaClusterId);
+        //
+        // final RestServer rest = new RestServer(config);
+        //
+        // connect = new Connect(herder, rest);
 
         connect.start();
     }

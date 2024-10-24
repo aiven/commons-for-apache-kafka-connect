@@ -66,6 +66,12 @@ public interface IntegrationBase {
         return AdminClient.create(adminClientConfig);
     }
 
+    default AdminClient newAdminClientNew(final String bootstrapServers) {
+        final Properties adminClientConfig = new Properties();
+        adminClientConfig.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        return AdminClient.create(adminClientConfig);
+    }
+
     default ConnectRunner newConnectRunner(final KafkaContainer kafka, final File pluginDir,
             final int offsetFlushIntervalMs) {
         return new ConnectRunner(pluginDir, kafka.getBootstrapServers(), offsetFlushIntervalMs);
@@ -124,6 +130,31 @@ public interface IntegrationBase {
     static LocalStackContainer createS3Container() {
         return new LocalStackContainer(DockerImageName.parse("localstack/localstack:2.0.2"))
                 .withServices(LocalStackContainer.Service.S3);
+    }
+
+    static List<String> consumeMessagesNew(final String topic, final int expectedMessageCount,
+            final String bootstrapServer) {
+        final Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-consumer-group");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        try (KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<>(props)) {
+            consumer.subscribe(Collections.singletonList(topic));
+            final List<String> messages = new ArrayList<>();
+
+            // Poll messages from the topic
+            while (messages.size() < expectedMessageCount) {
+                final ConsumerRecords<byte[], byte[]> records = consumer.poll(5L);
+                for (final ConsumerRecord<byte[], byte[]> record : records) {
+                    messages.add(new String(record.value(), StandardCharsets.UTF_8));
+                }
+            }
+
+            return messages;
+        }
     }
 
     static List<String> consumeMessages(final String topic, final int expectedMessageCount,

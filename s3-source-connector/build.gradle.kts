@@ -22,6 +22,7 @@ val amazonS3Version by extra("1.12.729")
 val amazonSTSVersion by extra("1.12.729")
 val s3mockVersion by extra("0.2.6")
 val parquetVersion by extra("1.14.3")
+val kafkaVersion by extra("3.6.0")
 
 val integrationTest: SourceSet =
     sourceSets.create("integrationTest") {
@@ -63,7 +64,26 @@ idea {
 
 dependencies {
   compileOnly(apache.kafka.connect.api)
-  compileOnly(apache.kafka.connect.runtime)
+  //  compileOnly(apache.kafka.connect.runtime)
+  compileOnly("org.apache.kafka:connect-runtime:$kafkaVersion:test")
+  integrationTestImplementation("org.apache.kafka:connect-runtime:$kafkaVersion:test")
+  testImplementation("org.apache.kafka:connect-runtime:$kafkaVersion:test")
+  testImplementation("org.apache.kafka:connect-runtime:$kafkaVersion")
+  integrationTestImplementation("org.apache.kafka:connect-runtime:$kafkaVersion")
+  integrationTestImplementation("org.apache.kafka:kafka_2.13:$kafkaVersion:test")
+  integrationTestImplementation("org.apache.kafka:kafka_2.13:$kafkaVersion")
+  integrationTestImplementation("org.apache.kafka:kafka-server-common:$kafkaVersion")
+  integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion:test")
+  integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion")
+  //  integrationTestImplementation(confluent.kafka.connect.avro.converter) {
+  //    exclude(group = "org.apache.kafka", module = "kafka-clients")
+  //  }
+  testImplementation(confluent.kafka.connect.avro.converter)
+  integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion")
+//
+//  integrationTestImplementation("io.github.embeddedkafka:embedded-kafka-schema-registry_3:7.7.1"){
+//    exclude(group = "", module = "" )
+//  }
 
   implementation(project(":commons"))
   implementation("com.amazonaws:aws-java-sdk-s3:$amazonS3Version")
@@ -95,7 +115,7 @@ dependencies {
   testImplementation(compressionlibs.zstd.jni)
 
   testImplementation(apache.kafka.connect.api)
-  testImplementation(apache.kafka.connect.runtime)
+  //  testImplementation(apache.kafka.connect.runtime)
   testImplementation(apache.kafka.connect.json)
 
   testImplementation(testinglibs.junit.jupiter)
@@ -155,9 +175,9 @@ dependencies {
   integrationTestImplementation(testinglibs.wiremock)
 
   // TODO: add avro-converter to ConnectRunner via plugin.path instead of on worker classpath
-  integrationTestImplementation(confluent.kafka.connect.avro.converter) {
-    exclude(group = "org.apache.kafka", module = "kafka-clients")
-  }
+  //  integrationTestImplementation(confluent.kafka.connect.avro.converter) {
+  //    exclude(group = "org.apache.kafka", module = "kafka-clients")
+  //  }
 
   testImplementation(apache.hadoop.mapreduce.client.core) {
     exclude(group = "org.apache.hadoop", module = "hadoop-yarn-client")
