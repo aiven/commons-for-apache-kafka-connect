@@ -64,21 +64,16 @@ idea {
 
 dependencies {
   compileOnly(apache.kafka.connect.api)
-  //  compileOnly(apache.kafka.connect.runtime)
-  compileOnly("org.apache.kafka:connect-runtime:$kafkaVersion:test")
-  integrationTestImplementation("org.apache.kafka:connect-runtime:$kafkaVersion:test")
-  testImplementation("org.apache.kafka:connect-runtime:$kafkaVersion:test")
-  testImplementation("org.apache.kafka:connect-runtime:$kafkaVersion")
-  integrationTestImplementation("org.apache.kafka:connect-runtime:$kafkaVersion")
-  integrationTestImplementation("org.apache.kafka:kafka_2.13:$kafkaVersion:test")
-  integrationTestImplementation("org.apache.kafka:kafka_2.13:$kafkaVersion")
-  integrationTestImplementation("org.apache.kafka:kafka-server-common:$kafkaVersion")
-  integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion:test")
-  integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion")
 
+  testImplementation("org.apache.kafka:connect-runtime:$kafkaVersion")
   testImplementation("io.confluent:kafka-schema-registry:7.6.0:tests")
   testImplementation("io.confluent:kafka-schema-registry:7.6.0")
 
+  integrationTestImplementation("org.apache.kafka:connect-runtime:$kafkaVersion:test")
+  integrationTestImplementation("org.apache.kafka:kafka_2.13:$kafkaVersion:test")
+  integrationTestImplementation("org.apache.kafka:kafka_2.13:$kafkaVersion")
+  integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion:test")
+  integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion")
 
   implementation(project(":commons"))
   implementation("com.amazonaws:aws-java-sdk-s3:$amazonS3Version")
