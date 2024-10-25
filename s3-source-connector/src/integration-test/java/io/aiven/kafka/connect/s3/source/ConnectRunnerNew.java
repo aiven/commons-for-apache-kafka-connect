@@ -17,14 +17,22 @@
 package io.aiven.kafka.connect.s3.source;
 import java.io.File;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+
+import io.confluent.kafka.schemaregistry.CompatibilityLevel;
+import io.confluent.kafka.schemaregistry.RestApp;
 
 import org.apache.kafka.connect.util.clusters.EmbeddedConnectCluster;
+import org.apache.kafka.test.TestUtils;
 
 public class ConnectRunnerNew {
     protected EmbeddedConnectCluster connectCluster;
+
+    protected RestApp restApp;
 
     private final File pluginDir;
     private final String bootstrapServers;
@@ -36,7 +44,7 @@ public class ConnectRunnerNew {
         this.offsetFlushInterval = offsetFlushIntervalMs;
     }
 
-    protected void startConnectCluster(String connectorName, Properties brokerProps) throws IOException {
+    protected void startConnectCluster(String connectorName, Properties brokerProps) throws Exception {
         Map<String, String> clientConfigs = new HashMap<>();
         clientConfigs.put("bootstrap.servers", brokerProps.getProperty("listeners"));
         connectCluster = new EmbeddedConnectCluster.Builder().name(connectorName)
@@ -44,6 +52,7 @@ public class ConnectRunnerNew {
                 .build();
 
         connectCluster.start();
+        startSchemaRegistry();
     }
 
     public String getBootstrapServers() {
@@ -61,7 +70,7 @@ public class ConnectRunnerNew {
     Map<String, String> getWorkerProperties() throws IOException {
         final Map<String, String> workerProps = new HashMap<>();
         final File tempFile = File.createTempFile("connect", "offsets");
-         workerProps.put("bootstrap.servers", bootstrapServers);
+//         workerProps.put("bootstrap.servers", bootstrapServers);
 
         workerProps.put("offset.flush.interval.ms", Integer.toString(offsetFlushInterval));
 
@@ -83,5 +92,34 @@ public class ConnectRunnerNew {
 
     public String configureConnector(String connName, Map<String, String> connConfig) {
         return connectCluster.configureConnector(connName, connConfig);
+    }
+
+    protected void startSchemaRegistry() throws Exception {
+        int port = findAvailableOpenPort();
+        restApp = new RestApp(port, null, getBootstrapServers(),
+            "_schemas", "NONE", true, new Properties());
+
+        restApp.start();
+        waitForSchemaRegistryToStart();
+    }
+
+    protected void waitForSchemaRegistryToStart() throws InterruptedException {
+        TestUtils.waitForCondition(
+            () -> restApp.restServer.isRunning(),
+            TimeUnit.MINUTES.toMillis(60),
+            "Schema-registry server did not start in time."
+        );
+    }
+
+    private Integer findAvailableOpenPort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
+
+    protected void stopSchemaRegistry() throws Exception {
+        if (restApp != null) {
+            restApp.stop();
+        }
     }
 }

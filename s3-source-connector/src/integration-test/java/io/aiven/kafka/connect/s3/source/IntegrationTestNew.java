@@ -117,7 +117,7 @@ final class IntegrationTestNew implements IntegrationBase {
     }
 
     @BeforeEach
-    void setUp(final TestInfo testInfo) throws ExecutionException, InterruptedException, IOException {
+    void setUp(final TestInfo testInfo) throws Exception {
         testBucketAccessor.createBucket();
         // adminClient = newAdminClient(KAFKA_CONTAINER);
 
@@ -136,9 +136,11 @@ final class IntegrationTestNew implements IntegrationBase {
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         testBucketAccessor.removeBucket();
+        connectRunner.stopSchemaRegistry();
         connectRunner.stopConnectCluster();
+
     }
 
     @Test

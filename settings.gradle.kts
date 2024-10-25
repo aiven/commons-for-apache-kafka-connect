@@ -2,8 +2,8 @@ rootProject.name = "cloud-storage-connectors-for-apache-kafka"
 
 val assertJVersion by extra("3.26.0")
 val avroVersion by extra("1.11.3")
-val avroConverterVersion by extra("7.2.2")
-val avroDataVersion by extra("7.2.2")
+val avroConverterVersion by extra("7.6.0")
+val avroDataVersion by extra("7.6.0")
 val awaitilityVersion by extra("4.2.1")
 val commonsTextVersion by extra("1.11.0")
 val hadoopVersion by extra("3.4.0")

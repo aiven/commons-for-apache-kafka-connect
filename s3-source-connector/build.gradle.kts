@@ -75,15 +75,10 @@ dependencies {
   integrationTestImplementation("org.apache.kafka:kafka-server-common:$kafkaVersion")
   integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion:test")
   integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion")
-  //  integrationTestImplementation(confluent.kafka.connect.avro.converter) {
-  //    exclude(group = "org.apache.kafka", module = "kafka-clients")
-  //  }
-  testImplementation(confluent.kafka.connect.avro.converter)
-  integrationTestImplementation("org.apache.kafka:kafka-clients:$kafkaVersion")
-//
-//  integrationTestImplementation("io.github.embeddedkafka:embedded-kafka-schema-registry_3:7.7.1"){
-//    exclude(group = "", module = "" )
-//  }
+
+  testImplementation("io.confluent:kafka-schema-registry:7.6.0:tests")
+  testImplementation("io.confluent:kafka-schema-registry:7.6.0")
+
 
   implementation(project(":commons"))
   implementation("com.amazonaws:aws-java-sdk-s3:$amazonS3Version")
