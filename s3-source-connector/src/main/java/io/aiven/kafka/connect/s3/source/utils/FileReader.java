@@ -70,6 +70,7 @@ public class FileReader {
                     .stream()
                     .filter(objectSummary -> objectSummary.getSize() > 0)
                     .filter(objectSummary -> !failedObjectKeys.contains(objectSummary.getKey()))
+                    .filter(objectSummary -> assignObjectToTask(objectSummary.getKey()))
                     .collect(Collectors.toList());
 
             allSummaries.addAll(filteredSummaries); // Add the filtered summaries to the main list
@@ -81,6 +82,13 @@ public class FileReader {
         } while (objectListing.isTruncated()); // Continue fetching if the result is truncated
 
         return allSummaries;
+    }
+
+    private boolean assignObjectToTask(String objectKey) {
+        int maxTasks = Integer.parseInt((String)s3SourceConfig.originals().get("tasks.max"));
+        int taskId = Integer.parseInt((String)s3SourceConfig.originals().get("task.id"))  % maxTasks;
+        int taskAssignment = Math.abs(objectKey.hashCode()) % maxTasks;
+        return taskAssignment == taskId;
     }
 
 }

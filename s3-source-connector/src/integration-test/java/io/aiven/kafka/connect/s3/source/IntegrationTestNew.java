@@ -160,21 +160,25 @@ final class IntegrationTestNew implements IntegrationBase {
         final String testData2 = "Hello, Kafka Connect S3 Source! object 2";
 
         // write 2 objects to s3
-        writeToS3(topicName, testData1.getBytes(StandardCharsets.UTF_8), "00000");
-        writeToS3(topicName, testData2.getBytes(StandardCharsets.UTF_8), "00000");
-        writeToS3(topicName, testData1.getBytes(StandardCharsets.UTF_8), "00001");
-        writeToS3(topicName, testData2.getBytes(StandardCharsets.UTF_8), "00001");
-        writeToS3(topicName, new byte[0], "00003"); // this should be ignored.
+        for(int i=0; i<50; i++) {
+            writeToS3(topicName, testData1.getBytes(StandardCharsets.UTF_8), "00000");
+            writeToS3(topicName, testData2.getBytes(StandardCharsets.UTF_8), "00000");
+            writeToS3(topicName, testData1.getBytes(StandardCharsets.UTF_8), "00001");
+            writeToS3(topicName, testData2.getBytes(StandardCharsets.UTF_8), "00001");
+            writeToS3(topicName, new byte[0], "00003"); // this should be ignored.
+        }
 
         final List<String> objects = testBucketAccessor.listObjects();
-        assertThat(objects.size()).isEqualTo(5);
+        assertThat(objects.size()).isEqualTo(250);
 
         // Verify that the connector is correctly set up
         assertThat(connectorConfig.get("name")).isEqualTo(CONNECTOR_NAME);
 
         // Poll messages from the Kafka topic and verify the consumed data
-        final List<String> records = IntegrationBase.consumeMessagesNew(topicName, 4,
+        final List<String> records = IntegrationBase.consumeMessagesNew(topicName, 200,
                 connectRunner.getBootstrapServers());
+
+        assertThat(records.size()).isEqualTo(200);
 
         // Verify that the correct data is read from the S3 bucket and pushed to Kafka
         assertThat(records).contains(testData1).contains(testData2);
@@ -287,7 +291,7 @@ final class IntegrationTestNew implements IntegrationBase {
         config.put("name", connectorName);
         config.put("key.converter", "org.apache.kafka.connect.converters.ByteArrayConverter");
         config.put("value.converter", "org.apache.kafka.connect.converters.ByteArrayConverter");
-        config.put("tasks.max", "1");
+        config.put("tasks.max", "10");
         return config;
     }
 
