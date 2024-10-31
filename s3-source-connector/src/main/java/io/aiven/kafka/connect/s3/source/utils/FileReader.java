@@ -75,12 +75,11 @@ public class FileReader {
 
             allSummaries.addAll(filteredSummaries); // Add the filtered summaries to the main list
 
-            allSummaries.forEach(objSummary -> LOGGER.info("Objects to be processed {} ", objSummary.getKey()));
-
             // Check if there are more objects to fetch
             continuationToken = objectListing.getNextContinuationToken();
         } while (objectListing.isTruncated()); // Continue fetching if the result is truncated
 
+        allSummaries.forEach(objSummary -> LOGGER.info("Objects to be processed {} ", objSummary.getKey()));
         return allSummaries;
     }
 

@@ -23,11 +23,17 @@ import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -154,6 +160,36 @@ public interface IntegrationBase {
             }
 
             return messages;
+        }
+    }
+
+    static Map<String, Object> consumeOffsetStorageMessages(final String topic, final int expectedMessageCount,
+                                           final String bootstrapServer) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        final Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-consumer-group");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        int recsSize = 0;
+
+        try (KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<>(props)) {
+            consumer.subscribe(Collections.singletonList(topic));
+            final Map<String, Object> messages = new HashMap<>();
+
+            // Poll messages from the topic
+            while (messages.size() < expectedMessageCount) {
+                final ConsumerRecords<byte[], byte[]> records = consumer.poll(5L);
+                for (final ConsumerRecord<byte[], byte[]> record : records) {
+                    Map<String, Object> offsetRec = objectMapper.readValue(new String(record.value()), new TypeReference<>() {});
+                    messages.putAll(offsetRec);
+                }
+            }
+
+            return messages;
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
     }
 
