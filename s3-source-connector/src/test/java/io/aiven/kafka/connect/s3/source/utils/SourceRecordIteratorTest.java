@@ -16,9 +16,9 @@
 
 package io.aiven.kafka.connect.s3.source.utils;
 
+import static io.aiven.kafka.connect.s3.source.utils.S3OffsetManagerEntry.RECORD_COUNT;
 import static io.aiven.kafka.connect.s3.source.utils.SourceRecordIterator.BYTES_TRANSFORMATION_NUM_OF_RECS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyLong;
@@ -35,11 +35,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.SchemaAndValue;
+import org.apache.kafka.connect.source.SourceTaskContext;
+import org.apache.kafka.connect.storage.OffsetStorageReader;
 
-import io.aiven.kafka.connect.common.source.input.AvroTransformer;
+import io.aiven.kafka.connect.common.source.OffsetManager;
 import io.aiven.kafka.connect.common.source.input.ByteArrayTransformer;
 import io.aiven.kafka.connect.common.source.input.InputFormat;
 import io.aiven.kafka.connect.common.source.input.Transformer;
@@ -53,7 +57,8 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 final class SourceRecordIteratorTest {
 
     private S3SourceConfig mockConfig;
-    private OffsetManager mockOffsetManager;
+    private S3OffsetManagerEntry mockS3OffsetManagerEntry;
+    private OffsetManager<S3OffsetManagerEntry> mockOffsetManager;
     private Transformer mockTransformer;
 
     private AWSV2SourceClient mockSourceApiClient;
@@ -62,8 +67,10 @@ final class SourceRecordIteratorTest {
     public void setUp() {
         mockConfig = mock(S3SourceConfig.class);
         mockOffsetManager = mock(OffsetManager.class);
+        mockS3OffsetManagerEntry = mock(S3OffsetManagerEntry.class);
         mockTransformer = mock(Transformer.class);
         mockSourceApiClient = mock(AWSV2SourceClient.class);
+        when(mockConfig.getAwsS3BucketName()).thenReturn("bucket_name");
     }
 
     @Test
@@ -77,7 +84,7 @@ final class SourceRecordIteratorTest {
 
             mockTransformer = TransformerFactory.getTransformer(InputFormat.BYTES);
 
-            when(mockOffsetManager.getOffsets()).thenReturn(Collections.emptyMap());
+            when(mockS3OffsetManagerEntry.getProperties()).thenReturn(Collections.emptyMap());
 
             when(mockSourceApiClient.getS3ObjectIterator(any())).thenReturn(Collections.emptyIterator());
             Iterator<S3SourceRecord> iterator = new SourceRecordIterator(mockConfig, mockOffsetManager, mockTransformer,
@@ -114,12 +121,11 @@ final class SourceRecordIteratorTest {
             when(mockTransformer.getRecords(any(), anyString(), anyInt(), any(), anyLong()))
                     .thenReturn(Stream.of(SchemaAndValue.NULL));
 
-            when(mockOffsetManager.getOffsets()).thenReturn(Collections.emptyMap());
+            when(mockOffsetManager.getEntry(any(), any())).thenReturn(Optional.of(mockS3OffsetManagerEntry));
 
             when(mockSourceApiClient.getListOfObjectKeys(any()))
                     .thenReturn(Collections.singletonList(key).listIterator());
-            when(mockOffsetManager.recordsProcessedForObjectKey(anyMap(), anyString()))
-                    .thenReturn(BYTES_TRANSFORMATION_NUM_OF_RECS);
+            when(mockS3OffsetManagerEntry.getRecordCount()).thenReturn(BYTES_TRANSFORMATION_NUM_OF_RECS);
 
             // should skip if any records were produced by source record iterator.
             final Iterator<S3SourceRecord> iterator = new SourceRecordIterator(mockConfig, mockOffsetManager,
@@ -131,26 +137,34 @@ final class SourceRecordIteratorTest {
 
         // With AvroTransformer
         try (InputStream inputStream = new ByteArrayInputStream("Hello World".getBytes(StandardCharsets.UTF_8))) {
+
             when(mockSourceApiClient.getObject(key)).thenReturn(() -> inputStream);
             when(mockSourceApiClient.getS3ObjectIterator(any())).thenReturn(Arrays.asList(s3Object).iterator());
-            mockTransformer = mock(AvroTransformer.class);
             when(mockSourceApiClient.getListOfObjectKeys(any()))
                     .thenReturn(Collections.singletonList(key).listIterator());
 
-            when(mockOffsetManager.recordsProcessedForObjectKey(anyMap(), anyString()))
-                    .thenReturn(BYTES_TRANSFORMATION_NUM_OF_RECS);
+            final OffsetStorageReader offsetStorageReader = mock(OffsetStorageReader.class);
+            when(offsetStorageReader.offset(any(Map.class))).thenReturn(Map.of(RECORD_COUNT, 1));
 
-            when(mockTransformer.getKeyData(anyString(), anyString(), any())).thenReturn(SchemaAndValue.NULL);
+            final SourceTaskContext context = mock(SourceTaskContext.class);
+            when(context.offsetStorageReader()).thenReturn(offsetStorageReader);
+
+            mockOffsetManager = new OffsetManager(context);
+
+            mockTransformer = mock(Transformer.class);
+            final SchemaAndValue schemaKey = new SchemaAndValue(null, "KEY");
+            final SchemaAndValue schemaValue = new SchemaAndValue(null, "VALUE");
+            when(mockTransformer.getKeyData(anyString(), anyString(), any())).thenReturn(schemaKey);
             when(mockTransformer.getRecords(any(), anyString(), anyInt(), any(), anyLong()))
-                    .thenReturn(Arrays.asList(SchemaAndValue.NULL).stream());
+                    .thenReturn(Arrays.asList(schemaValue).stream());
 
             final Iterator<S3SourceRecord> iterator = new SourceRecordIterator(mockConfig, mockOffsetManager,
                     mockTransformer, mockSourceApiClient);
             assertThat(iterator.hasNext()).isTrue();
-            iterator.next();
-
+            final S3SourceRecord record = iterator.next();
+            assertThat(record.getValue().value()).isEqualTo("VALUE");
+            assertThat(record.getOffsetManagerEntry().getRecordCount()).isEqualTo(2);
             verify(mockTransformer, times(1)).getRecords(any(), anyString(), anyInt(), any(), anyLong());
         }
     }
-
 }

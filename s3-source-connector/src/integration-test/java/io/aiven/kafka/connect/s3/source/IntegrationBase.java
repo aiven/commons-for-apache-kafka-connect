@@ -16,8 +16,8 @@
 
 package io.aiven.kafka.connect.s3.source;
 
-import static io.aiven.kafka.connect.s3.source.S3SourceTask.OBJECT_KEY;
-import static io.aiven.kafka.connect.s3.source.utils.OffsetManager.SEPARATOR;
+import static io.aiven.kafka.connect.s3.source.utils.S3OffsetManagerEntry.OBJECT_KEY;
+import static io.aiven.kafka.connect.s3.source.utils.S3OffsetManagerEntry.RECORD_COUNT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -50,6 +50,8 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.connect.json.JsonDeserializer;
+
+import io.aiven.kafka.connect.common.source.OffsetManager;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -130,14 +132,15 @@ public interface IntegrationBase {
      *            the data.
      * @param partitionId
      *            the partition id.
-     * @return the key prefixed by {@link S3SourceTask#OBJECT_KEY} and
-     *         {@link io.aiven.kafka.connect.s3.source.utils.OffsetManager#SEPARATOR}
+     * @return the key prefixed by {@link io.aiven.kafka.connect.s3.source.utils.S3OffsetManagerEntry#OBJECT_KEY} and
+     *         {@link OffsetManager}
      */
     default String writeToS3(final String topicName, final byte[] testDataBytes, final String partitionId) {
         final String objectKey = org.apache.commons.lang3.StringUtils.defaultIfBlank(getS3Prefix(), "") + topicName
                 + "-" + partitionId + "-" + System.currentTimeMillis() + ".txt";
         writeToS3WithKey(objectKey, testDataBytes);
-        return OBJECT_KEY + SEPARATOR + objectKey;
+        return objectKey;
+
     }
 
     default AdminClient newAdminClient(final String bootstrapServers) {
@@ -260,10 +263,15 @@ public interface IntegrationBase {
         final Map<String, Object> messages = new HashMap<>();
         final ConsumerRecords<byte[], byte[]> records = consumer.poll(Duration.ofSeconds(1));
         for (final ConsumerRecord<byte[], byte[]> record : records) {
-            Map<String, Object> offsetRec = OBJECT_MAPPER.readValue(record.value(), new TypeReference<>() { // NOPMD
+            final Map<String, Object> offsetRec = OBJECT_MAPPER.readValue(record.value(), new TypeReference<>() { // NOPMD
             });
-            messages.putAll(offsetRec);
+            final List<Object> key = OBJECT_MAPPER.readValue(record.key(), new TypeReference<>() { // NOPMD
+            });
+            // key.get(0) will return the name of the connector the commit is from.
+            final Map<String, Object> keyDetails = (Map<String, Object>) key.get(1);
+            messages.put((String) keyDetails.get(OBJECT_KEY), offsetRec.get(RECORD_COUNT));
         }
+
         return messages;
     }
 
