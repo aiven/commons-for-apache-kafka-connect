@@ -76,6 +76,7 @@ final class SourceRecordIteratorTest {
             when(mockSourceApiClient.getObject(anyString())).thenReturn(() -> mockInputStream);
 
             mockTransformer = TransformerFactory.getTransformer(InputFormat.BYTES);
+            when(mockConfig.getByteArrayTransformerMaxBufferSize()).thenReturn(4096);
 
             when(mockOffsetManager.getOffsets()).thenReturn(Collections.emptyMap());
 
